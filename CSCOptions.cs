@@ -1,4 +1,4 @@
 ﻿namespace WebCSC
 {
-    public record CSCOptions(string[]? Libraries);
+    public record CSCOptions(string[] Libraries);
 }

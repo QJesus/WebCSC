@@ -15,8 +15,7 @@ public static class WebCSCMain
     {
         var builder = WebAssemblyHostBuilder.CreateDefault(args);
         //BaseAddress is required in Web Assembly.
-        builder.Services.AddScoped(sp =>
-   new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
+        builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
         var host = builder.Build();
         JSInProcRuntime = (IJSInProcessRuntime)host.Services.GetRequiredService<IJSRuntime>();
@@ -30,15 +29,15 @@ public static class WebCSCMain
         return type.GetMethod("<Factory>", BindingFlags.Static | BindingFlags.Public);
     }
 
-    private static async Task<(CompileResult Result, Assembly? Assembly)> CompileAsync(string code, CSCOptions? options=null)
+    private static async Task<(CompileResult Result, Assembly Assembly)> CompileAsync(string code, CSCOptions options = null)
     {
-        List<MetadataReference> references = new List<MetadataReference>();
-        string[] defaultLibs = { "/_framework/System.dll","/_framework/System.Buffers.dll","/_framework/System.Collections.dll","/_framework/System.Core.dll","/_framework/System.Runtime.dll","/_framework/System.IO.dll","/_framework/System.Linq.dll","/_framework/System.Linq.Expressions.dll","/_framework/System.Linq.Parallel.dll","/_framework/mscorlib.dll","/_framework/System.Private.CoreLib.dll"};
-        List<Stream> libSteams = new List<Stream>();
+        List<MetadataReference> references = new();
+        string[] defaultLibs = { "/_framework/System.dll", "/_framework/System.Buffers.dll", "/_framework/System.Collections.dll", "/_framework/System.Core.dll", "/_framework/System.Runtime.dll", "/_framework/System.IO.dll", "/_framework/System.Linq.dll", "/_framework/System.Linq.Expressions.dll", "/_framework/System.Linq.Parallel.dll", "/_framework/mscorlib.dll", "/_framework/System.Private.CoreLib.dll" };
+        List<Stream> libSteams = new();
         try
         {
-            List<string> libraries = new (defaultLibs);
-            if (options!=null&& options.Libraries!=null)
+            List<string> libraries = new(defaultLibs);
+            if (options != null && options.Libraries != null)
             {
                 libraries.AddRange(options.Libraries);
             }
@@ -51,20 +50,17 @@ public static class WebCSCMain
             //WebAssembly doesn't support concurrentBuild，so 'concurrentBuild:false' is required, else 'System.PlatformNotSupportedException: Cannot wait on monitors on this runtime' will be thrown.
             var compilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, concurrentBuild: false)
                 .WithUsings("System", "System.Text", "System.Collections.Generic", "System.IO", "System.Linq", "System.Threading", "System.Threading.Tasks");
-            CSharpParseOptions parserOptions = CSharpParseOptions.Default.
-                WithLanguageVersion(LanguageVersion.Latest).WithKind(SourceCodeKind.Script);
+            var parserOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest).WithKind(SourceCodeKind.Script);
             var syntaxTree = SyntaxFactory.ParseSyntaxTree(code, parserOptions);
-            var scriptCompilation = CSharpCompilation.CreateScriptCompilation(
-            "main.dll", syntaxTree,
-           options: compilationOptions).AddReferences(references);
-            using MemoryStream stream = new MemoryStream();
+            var scriptCompilation = CSharpCompilation.CreateScriptCompilation("main.dll", syntaxTree, options: compilationOptions).AddReferences(references);
+            using MemoryStream stream = new();
             var emitResult = scriptCompilation.Emit(stream);
             stream.Position = 0;
             return ProcessResult(stream, emitResult);
         }
         finally
         {
-            foreach(var stream in libSteams)
+            foreach (var stream in libSteams)
             {
                 stream.Dispose();
             }
@@ -87,20 +83,20 @@ public static class WebCSCMain
     }
 
     [JSInvokable]
-    public static async Task<CompileResult> Check(string code, CSCOptions? options = null)
+    public static async Task<CompileResult> Check(string code, CSCOptions options = null)
     {
         (var result, var _) = await CompileAsync(code, options);
         return result;
     }
 
     [JSInvokable]
-    public static async Task<CompileResult> Run(string code, CSCOptions? options = null)
+    public static async Task<CompileResult> Run(string code, CSCOptions options = null)
     {
         (var result, var asm) = await CompileAsync(code, options);
         if (result.Success)
         {
             MethodInfo entryMethod = GetEntryMethod(asm!);
-            var compileResult = (Task)entryMethod.Invoke(null,new object[] { new object[2] });
+            var compileResult = (Task)entryMethod.Invoke(null, new object[] { new object[2] });
             await compileResult;
             return new CompileResult(true);
         }

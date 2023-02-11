@@ -14,9 +14,9 @@ public static class Console
         WriteLine((object)msg);
     }
 
-    public static void WriteLine(string format, params object?[] arg)
+    public static void WriteLine(string format, params object[] arg)
     {
-        WriteLine(string.Format(format,arg));
+        WriteLine(string.Format(format, arg));
     }
 
     public static string ReadLine()
